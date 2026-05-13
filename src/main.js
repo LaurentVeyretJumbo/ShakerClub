@@ -25,6 +25,8 @@ const state = {
   lottery: null,
 };
 
+const MAX_SAVES = 5;
+
 const app = document.querySelector('#app');
 
 function clamp(value, min, max) {
@@ -82,6 +84,8 @@ function render() {
       </div>
       <strong class="percent">${roundedProgress}%</strong>
 
+      ${renderRescueMeter()}
+
       <div class="stage">
         <div class="liquid" style="height: ${clamp(18 + state.progress * 0.62, 18, 82)}%"></div>
         <div class="shaker" style="--shake-y: ${state.shakerOffset}px; --shake-tilt: ${state.shakerTilt}deg" aria-hidden="true">
@@ -114,7 +118,7 @@ function renderLotteryOverlay() {
     return `
       <span class="dice-spin">🎲</span>
       <span>Tentative ${attempt}</span>
-      <small>1 chance sur ${7 - attempt}</small>
+      <small>Perte: 1 chance sur ${7 - attempt}</small>
     `;
   }
   if (phase === 'result') {
@@ -144,6 +148,47 @@ function renderLotteryOverlay() {
   return '';
 }
 
+function renderRescueMeter() {
+  const currentAttempt = state.lottery?.attempt ?? 1;
+  const phase = state.lottery?.phase ?? 'idle';
+  const successCount = state.lottery?.successCount ?? 0;
+
+  const items = Array.from({ length: MAX_SAVES }, (_, index) => {
+    const attempt = index + 1;
+    let modifier = 'pending';
+
+    if (attempt <= successCount) {
+      modifier = 'saved';
+    } else if (phase === 'won') {
+      modifier = 'saved';
+    } else if (phase === 'fail' && attempt === currentAttempt) {
+      modifier = 'lost';
+    } else if (attempt === currentAttempt && state.lottery) {
+      modifier = phase === 'rolling' ? 'active' : 'current';
+    } else if (phase === 'fail' && attempt > currentAttempt) {
+      modifier = 'locked';
+    }
+
+    return `
+      <div class="rescue-step rescue-step--${modifier}">
+        <span class="rescue-step__index">${attempt}</span>
+        <strong class="rescue-step__title">Sauvetage</strong>
+        <small class="rescue-step__odds">Perte 1/${7 - attempt}</small>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <section class="rescue-meter" aria-label="Etat des sauvetages">
+      <div class="rescue-meter__header">
+        <p class="rescue-meter__title">5 sauvetages maximum</p>
+        <span class="rescue-meter__count">${successCount}/${MAX_SAVES} sauvés</span>
+      </div>
+      <div class="rescue-meter__grid">${items}</div>
+    </section>
+  `;
+}
+
 function goHome() {
   if (state.motionHandler) {
     window.removeEventListener('devicemotion', state.motionHandler);
@@ -168,11 +213,11 @@ function doLotteryRoll() {
   if (state.screen !== 'game' || !state.lottery) return;
   const { attempt, successCount } = state.lottery;
   const odds = 7 - attempt; // attempt 1→1/6, 2→1/5, 3→1/4, 4→1/3, 5→1/2
-  const success = Math.floor(Math.random() * odds) === 0;
+  const lost = Math.floor(Math.random() * odds) === 0;
 
-  if (success) {
+  if (!lost) {
     const newCount = successCount + 1;
-    if (attempt >= 5) {
+    if (attempt >= MAX_SAVES) {
       state.lottery = { attempt, phase: 'won', successCount: newCount };
       state.status = 'Cocktail parfait ! Toutes les tentatives réussies !';
       render();

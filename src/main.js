@@ -164,29 +164,15 @@ function renderRescueMeter() {
     } else if (phase === 'fail' && attempt === currentAttempt) {
       modifier = 'lost';
     } else if (attempt === currentAttempt && state.lottery) {
-      modifier = phase === 'rolling' ? 'active' : 'current';
+      modifier = (phase === 'rolling' || phase === 'shake') ? 'active' : 'current';
     } else if (phase === 'fail' && attempt > currentAttempt) {
       modifier = 'locked';
     }
 
-    return `
-      <div class="rescue-step rescue-step--${modifier}">
-        <span class="rescue-step__index">${attempt}</span>
-        <strong class="rescue-step__title">Sauvetage</strong>
-        <small class="rescue-step__odds">Perte 1/${7 - attempt}</small>
-      </div>
-    `;
+    return `<div class="rescue-step rescue-step--${modifier}"><span class="rescue-step__index">${attempt}</span></div>`;
   }).join('');
 
-  return `
-    <section class="rescue-meter" aria-label="Etat des sauvetages">
-      <div class="rescue-meter__header">
-        <p class="rescue-meter__title">5 sauvetages maximum</p>
-        <span class="rescue-meter__count">${successCount}/${MAX_SAVES} sauvés</span>
-      </div>
-      <div class="rescue-meter__grid">${items}</div>
-    </section>
-  `;
+  return `<div class="rescue-meter" aria-label="Etat des sauvetages"><div class="rescue-meter__grid">${items}</div></div>`;
 }
 
 function goHome() {
@@ -223,14 +209,15 @@ function doLotteryRoll() {
       render();
     } else {
       state.lottery = { attempt, phase: 'result', successCount: newCount };
-      state.status = `Tentative ${attempt} réussie ! Prochain tirage…`;
+      state.status = `Tentative ${attempt} réussie ! Secouez à nouveau pour continuer…`;
       render();
       setTimeout(() => {
         if (state.screen !== 'game' || !state.lottery) return;
-        state.lottery = { attempt: attempt + 1, phase: 'rolling', successCount: newCount };
-        state.status = 'Le sort en décide…';
+        state.lottery = { attempt: attempt + 1, phase: 'shake', successCount: newCount };
+        state.won = false;
+        state.progress = 0;
+        state.status = 'Secouez jusqu\'à 100 % pour le prochain tirage !';
         render();
-        setTimeout(doLotteryRoll, 1100);
       }, 1500);
     }
   } else {
@@ -351,7 +338,16 @@ function update(timestamp) {
 
     if (state.progress >= 100) {
       state.progress = 100;
-      triggerLottery();
+      if (state.lottery?.phase === 'shake') {
+        const { attempt, successCount } = state.lottery;
+        state.won = true;
+        state.lottery = { attempt, phase: 'rolling', successCount };
+        state.status = 'Le sort en décide…';
+        render();
+        setTimeout(doLotteryRoll, 1100);
+      } else {
+        triggerLottery();
+      }
     }
 
     render();

@@ -66,6 +66,7 @@ function render() {
   }
 
   const roundedProgress = Math.round(state.progress);
+  const showLotteryOverlay = ['rolling', 'result', 'fail', 'won'].includes(state.lottery?.phase);
   const permissionLabel = state.permissionState === 'requesting'
     ? 'Autorisation…'
     : state.sensorActive
@@ -94,7 +95,7 @@ function render() {
           <span class="shaker__cup"></span>
           <span class="shaker__shine"></span>
         </div>
-        <div class="victory ${state.lottery ? 'victory--visible' : ''} ${state.lottery?.phase === 'fail' ? 'victory--fail' : ''}" role="status" aria-live="polite">
+        <div class="victory ${showLotteryOverlay ? 'victory--visible' : ''} ${state.lottery?.phase === 'fail' ? 'victory--fail' : ''}" role="status" aria-live="polite">
           ${renderLotteryOverlay()}
         </div>
       </div>

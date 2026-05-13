@@ -1,5 +1,3 @@
-import './styles.css';
-
 const SHAKE_THRESHOLD = 2.15;
 const MAX_VERTICAL_FORCE = 11;
 const PROGRESS_GAIN = 18;

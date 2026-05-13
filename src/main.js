@@ -1,0 +1,268 @@
+import './styles.css';
+
+const SHAKE_THRESHOLD = 2.15;
+const MAX_VERTICAL_FORCE = 11;
+const PROGRESS_GAIN = 18;
+const DECAY_PER_SECOND = 9;
+const SENSOR_TIMEOUT_MS = 1800;
+const SMOOTHING = 0.22;
+
+const state = {
+  screen: 'home',
+  progress: 0,
+  won: false,
+  permissionState: 'idle',
+  sensorSupported: 'DeviceMotionEvent' in window,
+  sensorActive: false,
+  status: 'Appuyez sur PLAY pour lancer le club.',
+  smoothedVertical: 0,
+  lastMotionAt: 0,
+  lastFrameAt: performance.now(),
+  fallbackImpulse: 0,
+  fallbackPointerY: null,
+  shakerOffset: 0,
+  shakerTilt: 0,
+  motionHandler: null,
+};
+
+const app = document.querySelector('#app');
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function isIosPermissionRequired() {
+  return (
+    typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function'
+  );
+}
+
+function render() {
+  app.className = `app app--${state.screen}`;
+
+  if (state.screen === 'home') {
+    app.innerHTML = `
+      <section class="hero" aria-labelledby="title">
+        <div class="hero__glow hero__glow--cyan"></div>
+        <div class="hero__glow hero__glow--pink"></div>
+        <div class="club-card">
+          <p class="eyebrow">mobile cocktail challenge</p>
+          <h1 id="title" class="neon-title">SHAKE<br><span>CLUB</span></h1>
+          <div class="neon-shaker" aria-hidden="true">
+            <span class="neon-shaker__cap"></span>
+            <span class="neon-shaker__body"></span>
+            <span class="neon-shaker__spark neon-shaker__spark--one"></span>
+            <span class="neon-shaker__spark neon-shaker__spark--two"></span>
+          </div>
+          <p class="hero__copy">Secouez votre téléphone de haut en bas pour remplir la jauge.</p>
+          <button class="button button--play" type="button" data-action="play">PLAY</button>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const roundedProgress = Math.round(state.progress);
+  const permissionLabel = state.permissionState === 'requesting'
+    ? 'Autorisation…'
+    : state.sensorActive
+      ? 'Capteurs actifs'
+      : 'Activer les mouvements';
+
+  app.innerHTML = `
+    <section class="game" aria-labelledby="game-title">
+      <div class="game__header">
+        <p class="eyebrow">shake vertical only</p>
+        <h2 id="game-title">Préparez le cocktail</h2>
+      </div>
+
+      <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${roundedProgress}" aria-label="Progression du shake">
+        <span class="meter__fill" style="width: ${state.progress}%"></span>
+      </div>
+      <strong class="percent">${roundedProgress}%</strong>
+
+      <div class="stage ${state.won ? 'stage--won' : ''}">
+        <div class="liquid" style="height: ${clamp(18 + state.progress * 0.62, 18, 82)}%"></div>
+        <div class="shaker" style="--shake-y: ${state.shakerOffset}px; --shake-tilt: ${state.shakerTilt}deg" aria-hidden="true">
+          <span class="shaker__lid"></span>
+          <span class="shaker__neck"></span>
+          <span class="shaker__cup"></span>
+          <span class="shaker__shine"></span>
+        </div>
+        <div class="victory ${state.won ? 'victory--visible' : ''}" role="status">
+          <span>Victoire !</span>
+          <small>Cocktail parfaitement frappé.</small>
+        </div>
+      </div>
+
+      <p class="status">${state.status}</p>
+
+      <div class="actions">
+        <button class="button" type="button" data-action="permission" ${state.sensorActive || !state.sensorSupported ? 'disabled' : ''}>${permissionLabel}</button>
+        <button class="button button--ghost" type="button" data-action="replay">Rejouer</button>
+      </div>
+
+      <p class="hint">Fallback desktop : appuyez sur <kbd>Espace</kbd>/<kbd>↑</kbd>, cliquez, ou glissez verticalement dans la fenêtre.</p>
+    </section>
+  `;
+}
+
+function goToGame() {
+  state.screen = 'game';
+  resetGame();
+  render();
+  ensureMotionAccess();
+}
+
+function resetGame() {
+  state.progress = 0;
+  state.won = false;
+  state.smoothedVertical = 0;
+  state.lastMotionAt = 0;
+  state.fallbackImpulse = 0;
+  state.status = state.sensorSupported
+    ? 'Secouez verticalement. Les mouvements horizontaux sont ignorés.'
+    : 'Capteur indisponible : utilisez le clavier ou la souris pour tester.';
+}
+
+async function ensureMotionAccess() {
+  if (!state.sensorSupported) {
+    state.status = 'DeviceMotionEvent indisponible : fallback desktop activé.';
+    render();
+    return;
+  }
+
+  if (state.sensorActive || state.permissionState === 'requesting') {
+    return;
+  }
+
+  if (isIosPermissionRequired()) {
+    state.permissionState = 'requesting';
+    state.status = 'iOS demande une autorisation pour accéder aux mouvements.';
+    render();
+
+    try {
+      const answer = await DeviceMotionEvent.requestPermission();
+      if (answer !== 'granted') {
+        state.permissionState = 'denied';
+        state.status = 'Autorisation refusée : utilisez le fallback clavier/souris.';
+        render();
+        return;
+      }
+    } catch (error) {
+      state.permissionState = 'denied';
+      state.status = 'Autorisation impossible : utilisez le fallback clavier/souris.';
+      render();
+      return;
+    }
+  }
+
+  startMotionListener();
+}
+
+function startMotionListener() {
+  if (state.sensorActive) return;
+
+  state.motionHandler = (event) => {
+    const vertical = event.acceleration?.y ?? event.accelerationIncludingGravity?.y ?? 0;
+    const horizontalX = Math.abs(event.acceleration?.x ?? event.accelerationIncludingGravity?.x ?? 0);
+    const horizontalZ = Math.abs(event.acceleration?.z ?? event.accelerationIncludingGravity?.z ?? 0);
+    const verticalMagnitude = Math.abs(vertical);
+
+    // Favorise les mouvements haut-bas : les axes horizontaux atténuent le score.
+    const horizontalPenalty = Math.min((horizontalX + horizontalZ) * 0.09, 0.65);
+    const verticalOnlyForce = Math.max(0, verticalMagnitude - horizontalPenalty);
+
+    state.smoothedVertical = state.smoothedVertical * (1 - SMOOTHING) + verticalOnlyForce * SMOOTHING;
+    state.lastMotionAt = performance.now();
+
+    if (state.smoothedVertical > SHAKE_THRESHOLD) {
+      state.status = 'Shake vertical détecté ! Continuez.';
+    }
+  };
+
+  window.addEventListener('devicemotion', state.motionHandler, { passive: true });
+  state.sensorActive = true;
+  state.permissionState = 'granted';
+  state.status = 'Capteurs actifs : secouez le téléphone de haut en bas.';
+  render();
+}
+
+function addFallbackShake(amount = 7) {
+  if (state.screen !== 'game' || state.won) return;
+  state.fallbackImpulse = Math.min(MAX_VERTICAL_FORCE, state.fallbackImpulse + amount);
+  state.status = 'Fallback desktop : shake vertical simulé.';
+}
+
+function update(timestamp) {
+  const dt = Math.min((timestamp - state.lastFrameAt) / 1000, 0.05);
+  state.lastFrameAt = timestamp;
+
+  if (state.screen === 'game' && !state.won) {
+    const sensorIsFresh = timestamp - state.lastMotionAt < SENSOR_TIMEOUT_MS;
+    const sensorForce = sensorIsFresh ? state.smoothedVertical : 0;
+    const force = clamp(Math.max(sensorForce, state.fallbackImpulse), 0, MAX_VERTICAL_FORCE);
+
+    if (force > SHAKE_THRESHOLD) {
+      const normalized = (force - SHAKE_THRESHOLD) / (MAX_VERTICAL_FORCE - SHAKE_THRESHOLD);
+      state.progress = clamp(state.progress + normalized * PROGRESS_GAIN * dt, 0, 100);
+    } else {
+      state.progress = clamp(state.progress - DECAY_PER_SECOND * dt, 0, 100);
+    }
+
+    state.fallbackImpulse = Math.max(0, state.fallbackImpulse - 18 * dt);
+    state.shakerOffset = Math.sin(timestamp / 55) * clamp(force * 2.8, 0, 28);
+    state.shakerTilt = Math.sin(timestamp / 95) * clamp(force * 0.9, 0, 10);
+
+    if (state.progress >= 100) {
+      state.progress = 100;
+      state.won = true;
+      state.status = 'Gagné ! Votre cocktail est prêt.';
+    }
+
+    render();
+  }
+
+  requestAnimationFrame(update);
+}
+
+app.addEventListener('click', (event) => {
+  const action = event.target.closest('[data-action]')?.dataset.action;
+  if (!action) return;
+
+  if (action === 'play') goToGame();
+  if (action === 'permission') ensureMotionAccess();
+  if (action === 'replay') {
+    resetGame();
+    render();
+  }
+});
+
+window.addEventListener('keydown', (event) => {
+  if (['Space', 'ArrowUp', 'KeyW'].includes(event.code)) {
+    event.preventDefault();
+    addFallbackShake(8);
+  }
+});
+
+window.addEventListener('pointerdown', (event) => {
+  state.fallbackPointerY = event.clientY;
+  addFallbackShake(3);
+});
+
+window.addEventListener('pointermove', (event) => {
+  if (state.fallbackPointerY === null) return;
+  const deltaY = Math.abs(event.clientY - state.fallbackPointerY);
+  if (deltaY > 18) {
+    addFallbackShake(clamp(deltaY / 8, 2, 9));
+    state.fallbackPointerY = event.clientY;
+  }
+});
+
+window.addEventListener('pointerup', () => {
+  state.fallbackPointerY = null;
+});
+
+render();
+requestAnimationFrame(update);

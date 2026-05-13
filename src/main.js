@@ -21,6 +21,8 @@ const state = {
   shakerOffset: 0,
   shakerTilt: 0,
   motionHandler: null,
+  // lottery: null | { attempt, phase: 'rolling'|'result'|'fail'|'won', successCount }
+  lottery: null,
 };
 
 const app = document.querySelector('#app');
@@ -80,7 +82,7 @@ function render() {
       </div>
       <strong class="percent">${roundedProgress}%</strong>
 
-      <div class="stage ${state.won ? 'stage--won' : ''}">
+      <div class="stage">
         <div class="liquid" style="height: ${clamp(18 + state.progress * 0.62, 18, 82)}%"></div>
         <div class="shaker" style="--shake-y: ${state.shakerOffset}px; --shake-tilt: ${state.shakerTilt}deg" aria-hidden="true">
           <span class="shaker__lid"></span>
@@ -88,9 +90,8 @@ function render() {
           <span class="shaker__cup"></span>
           <span class="shaker__shine"></span>
         </div>
-        <div class="victory ${state.won ? 'victory--visible' : ''}" role="status">
-          <span>Victoire !</span>
-          <small>Cocktail parfaitement frappé.</small>
+        <div class="victory ${state.lottery ? 'victory--visible' : ''} ${state.lottery?.phase === 'fail' ? 'victory--fail' : ''}" role="status" aria-live="polite">
+          ${renderLotteryOverlay()}
         </div>
       </div>
 
@@ -98,13 +99,102 @@ function render() {
 
       <div class="actions">
         <button class="button" type="button" data-action="permission" ${state.sensorActive || !state.sensorSupported ? 'disabled' : ''}>${permissionLabel}</button>
-        <button class="button button--ghost" type="button" data-action="replay">Rejouer</button>
+        <button class="button button--ghost" type="button" data-action="quit">Quitter</button>
       </div>
 
       <p class="hint">Fallback desktop : appuyez sur <kbd>Espace</kbd>/<kbd>↑</kbd>, cliquez, ou glissez verticalement dans la fenêtre.</p>
     </section>
   `;
 }
+
+function renderLotteryOverlay() {
+  if (!state.lottery) return '';
+  const { attempt, phase, successCount } = state.lottery;
+  if (phase === 'rolling') {
+    return `
+      <span class="dice-spin">🎲</span>
+      <span>Tentative ${attempt}</span>
+      <small>1 chance sur ${7 - attempt}</small>
+    `;
+  }
+  if (phase === 'result') {
+    return `
+      <span>✅</span>
+      <span>Réussi !</span>
+      <small>Tentative ${attempt} passée</small>
+    `;
+  }
+  if (phase === 'fail') {
+    const tries = successCount > 0
+      ? `${successCount} tentative${successCount > 1 ? 's' : ''} réussie${successCount > 1 ? 's' : ''}`
+      : 'Première tentative échouée';
+    return `
+      <span>😵</span>
+      <span>Cocktail raté !</span>
+      <small>${tries}</small>
+    `;
+  }
+  if (phase === 'won') {
+    return `
+      <span>🏆</span>
+      <span>Cocktail parfait !</span>
+      <small>Toutes les tentatives réussies !</small>
+    `;
+  }
+  return '';
+}
+
+function goHome() {
+  if (state.motionHandler) {
+    window.removeEventListener('devicemotion', state.motionHandler);
+    state.motionHandler = null;
+    state.sensorActive = false;
+    state.permissionState = 'idle';
+  }
+  state.screen = 'home';
+  state.lottery = null;
+  render();
+}
+
+function triggerLottery() {
+  state.won = true;
+  state.lottery = { attempt: 1, phase: 'rolling', successCount: 0 };
+  state.status = 'Le sort en décide…';
+  render();
+  setTimeout(doLotteryRoll, 1100);
+}
+
+function doLotteryRoll() {
+  if (state.screen !== 'game' || !state.lottery) return;
+  const { attempt, successCount } = state.lottery;
+  const odds = 7 - attempt; // attempt 1→1/6, 2→1/5, 3→1/4, 4→1/3, 5→1/2
+  const success = Math.floor(Math.random() * odds) === 0;
+
+  if (success) {
+    const newCount = successCount + 1;
+    if (attempt >= 5) {
+      state.lottery = { attempt, phase: 'won', successCount: newCount };
+      state.status = 'Cocktail parfait ! Toutes les tentatives réussies !';
+      render();
+    } else {
+      state.lottery = { attempt, phase: 'result', successCount: newCount };
+      state.status = `Tentative ${attempt} réussie ! Prochain tirage…`;
+      render();
+      setTimeout(() => {
+        if (state.screen !== 'game' || !state.lottery) return;
+        state.lottery = { attempt: attempt + 1, phase: 'rolling', successCount: newCount };
+        state.status = 'Le sort en décide…';
+        render();
+        setTimeout(doLotteryRoll, 1100);
+      }, 1500);
+    }
+  } else {
+    state.lottery = { attempt, phase: 'fail', successCount };
+    state.status = `Raté à la tentative ${attempt}. Cocktail manqué !`;
+    render();
+  }
+}
+
 
 function goToGame() {
   state.screen = 'game';
@@ -116,6 +206,7 @@ function goToGame() {
 function resetGame() {
   state.progress = 0;
   state.won = false;
+  state.lottery = null;
   state.smoothedVertical = 0;
   state.lastMotionAt = 0;
   state.fallbackImpulse = 0;
@@ -215,8 +306,7 @@ function update(timestamp) {
 
     if (state.progress >= 100) {
       state.progress = 100;
-      state.won = true;
-      state.status = 'Gagné ! Votre cocktail est prêt.';
+      triggerLottery();
     }
 
     render();
@@ -231,10 +321,7 @@ app.addEventListener('click', (event) => {
 
   if (action === 'play') goToGame();
   if (action === 'permission') ensureMotionAccess();
-  if (action === 'replay') {
-    resetGame();
-    render();
-  }
+  if (action === 'quit') goHome();
 });
 
 window.addEventListener('keydown', (event) => {

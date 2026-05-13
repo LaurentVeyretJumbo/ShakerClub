@@ -376,6 +376,26 @@ button {
   color: rgba(255, 255, 255, 0.82);
 }
 
+.victory--fail {
+  box-shadow: 0 0 40px rgba(255, 60, 60, 0.65);
+}
+
+.victory--fail span:not(.dice-spin) {
+  color: #ff6464;
+  text-shadow: 0 0 18px rgba(255, 100, 100, 0.8);
+}
+
+.dice-spin {
+  display: inline-block;
+  font-size: 2.6rem;
+  animation: dice-roll 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes dice-roll {
+  from { transform: rotate(-22deg) scale(0.9); }
+  to   { transform: rotate(22deg) scale(1.12); }
+}
+
 .status {
   min-height: 44px;
   margin: 18px 0 14px;

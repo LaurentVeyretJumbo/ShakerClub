@@ -120,6 +120,10 @@ function renderLotteryOverlay() {
       <span class="dice-spin">🎲</span>
       <span>Tentative ${attempt}</span>
       <small>Perte: 1 chance sur ${7 - attempt}</small>
+      <div class="lottery-countdown" aria-hidden="true">
+        <span>3</span><span>2</span><span>1</span>
+      </div>
+      <div class="lottery-timer-bar"><div class="lottery-timer-bar__fill"></div></div>
     `;
   }
   if (phase === 'result') {
@@ -193,7 +197,7 @@ function triggerLottery() {
   state.lottery = { attempt: 1, phase: 'rolling', successCount: 0 };
   state.status = 'Le sort en décide…';
   render();
-  setTimeout(doLotteryRoll, 1100);
+  setTimeout(doLotteryRoll, 3300);
 }
 
 function doLotteryRoll() {
@@ -345,7 +349,7 @@ function update(timestamp) {
         state.lottery = { attempt, phase: 'rolling', successCount };
         state.status = 'Le sort en décide…';
         render();
-        setTimeout(doLotteryRoll, 1100);
+        setTimeout(doLotteryRoll, 3300);
       } else {
         triggerLottery();
       }

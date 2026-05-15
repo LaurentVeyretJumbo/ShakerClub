@@ -466,6 +466,65 @@ button {
   to   { transform: rotate(22deg) scale(1.12); }
 }
 
+/* Countdown 3-2-1 */
+.lottery-countdown {
+  position: relative;
+  height: 3.2rem;
+  margin: 4px 0 2px;
+}
+
+.lottery-countdown span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: 900;
+  color: #00f7ff;
+  text-shadow:
+    0 0 12px rgba(0, 247, 255, 0.9),
+    0 0 28px rgba(0, 247, 255, 0.5);
+  opacity: 0;
+  transform: scale(1.4);
+  animation: count-step 1s forwards;
+}
+
+.lottery-countdown span:nth-child(1) { animation-delay: 0s; }
+.lottery-countdown span:nth-child(2) { animation-delay: 1s; }
+.lottery-countdown span:nth-child(3) { animation-delay: 2s; }
+
+@keyframes count-step {
+  0%   { opacity: 0;   transform: scale(1.4); }
+  12%  { opacity: 1;   transform: scale(1); }
+  72%  { opacity: 1;   transform: scale(1); }
+  100% { opacity: 0;   transform: scale(0.7); }
+}
+
+/* Timer bar */
+.lottery-timer-bar {
+  width: 100%;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.lottery-timer-bar__fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #00f7ff, #ff00aa);
+  transform-origin: left;
+  animation: timer-drain 3s linear forwards;
+}
+
+@keyframes timer-drain {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
 .status {
   min-height: 44px;
   margin: 18px 0 14px;

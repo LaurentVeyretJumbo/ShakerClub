@@ -1,4 +1,5 @@
 import { STRINGS } from './strings.js';
+import * as fx from './fx.js';
 
 const SHAKE_THRESHOLD = 2.15;
 const MAX_VERTICAL_FORCE = 11;
@@ -31,6 +32,9 @@ const MAX_SAVES = 5;
 
 const app = document.querySelector('#app');
 
+// References to the elements updated every frame — populated by render(), nulled on home screen.
+const dom = { meter: null, meterFill: null, percent: null, shaker: null, liquid: null, status: null };
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -46,6 +50,7 @@ function render() {
   app.className = `app app--${state.screen}`;
 
   if (state.screen === 'home') {
+    dom.meter = dom.meterFill = dom.percent = dom.shaker = dom.liquid = dom.status = null;
     app.innerHTML = `
       <section class="hero" aria-labelledby="title">
         <div class="hero__glow hero__glow--cyan"></div>
@@ -112,6 +117,24 @@ function render() {
       <p class="hint">${STRINGS.game.hint}</p>
     </section>
   `;
+  dom.meter     = app.querySelector('.meter');
+  dom.meterFill = app.querySelector('.meter__fill');
+  dom.percent   = app.querySelector('.percent');
+  dom.shaker    = app.querySelector('.shaker');
+  dom.liquid    = app.querySelector('.liquid');
+  dom.status    = app.querySelector('.status');
+}
+
+function renderFrame() {
+  if (!dom.meterFill) return;
+  const rounded = Math.round(state.progress);
+  dom.meter.setAttribute('aria-valuenow', rounded);
+  dom.meterFill.style.width = `${state.progress}%`;
+  dom.percent.textContent = `${rounded}%`;
+  dom.shaker.style.setProperty('--shake-y', `${state.shakerOffset}px`);
+  dom.shaker.style.setProperty('--shake-tilt', `${state.shakerTilt}deg`);
+  dom.liquid.style.height = `${clamp(18 + state.progress * 0.62, 18, 82)}%`;
+  dom.status.textContent = state.status;
 }
 
 function renderLotteryOverlay() {
@@ -193,6 +216,8 @@ function triggerLottery() {
   state.lottery = { attempt: 1, phase: 'rolling', successCount: 0 };
   state.status = STRINGS.status.lotteryRolling;
   render();
+  fx.playBuildUp();
+  [0, 1000, 2000].forEach((delay, step) => setTimeout(() => fx.playTick(step), delay));
   setTimeout(doLotteryRoll, 3300);
 }
 
@@ -207,10 +232,12 @@ function doLotteryRoll() {
     if (attempt >= MAX_SAVES) {
       state.lottery = { attempt, phase: 'won', successCount: newCount };
       state.status = STRINGS.status.lotteryWon;
+      fx.playVictory();
       render();
     } else {
       state.lottery = { attempt, phase: 'result', successCount: newCount };
       state.status = '';
+      fx.playSuccess();
       render();
       setTimeout(() => {
         if (state.screen !== 'game' || !state.lottery) return;
@@ -224,6 +251,7 @@ function doLotteryRoll() {
   } else {
     state.lottery = { attempt, phase: 'fail', successCount };
     state.status = '';
+    fx.playFail();
     render();
   }
 }
@@ -231,6 +259,7 @@ function doLotteryRoll() {
 
 function goToGame() {
   state.screen = 'game';
+  fx.resume();
   resetGame();
   render();
   ensureMotionAccess();
@@ -301,6 +330,7 @@ function startMotionListener() {
 
     if (state.smoothedVertical > SHAKE_THRESHOLD) {
       state.status = STRINGS.status.sensorDetected;
+      fx.playShakeTick();
     }
   };
 
@@ -345,13 +375,15 @@ function update(timestamp) {
         state.lottery = { attempt, phase: 'rolling', successCount };
         state.status = STRINGS.status.lotteryRolling;
         render();
+        fx.playBuildUp();
+        [0, 1000, 2000].forEach((delay, step) => setTimeout(() => fx.playTick(step), delay));
         setTimeout(doLotteryRoll, 3300);
       } else {
         triggerLottery();
       }
     }
 
-    render();
+    renderFrame();
   }
 
   requestAnimationFrame(update);

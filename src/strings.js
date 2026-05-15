@@ -15,7 +15,7 @@ export const STRINGS = {
 
   // Écran de jeu
   game: {
-    eyebrow: 'shake vertical only',
+    eyebrow: 'shake shake shake !',
     title: 'Préparez le cocktail',
     progressAriaLabel: 'Progression du shake',
     permissionRequesting: 'Autorisation…',

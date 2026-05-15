@@ -29,20 +29,16 @@ export const STRINGS = {
   // Overlay loterie
   lottery: {
     rollingIcon: '🎲',
-    rollingTitle: (attempt) => `Tentative ${attempt}`,
+    rollingTitle: (attempt) => `Vérification ${attempt}/5`,
     resultIcon: '✅',
-    resultTitle: 'Réussi !',
+    resultTitle: 'Cocktail approuvé !',
     failIcon: '😵',
     failTitle: 'Cocktail raté !',
-    wonIcon: '🏆',
-    wonTitle: 'Cocktail parfait !',
-    wonSubtitle: 'Toutes les tentatives réussies !',
   },
 
   // Messages de statut (barre en bas de l'écran de jeu)
   status: {
     lotteryRolling: 'Vérification du Cocktail…',
-    lotteryWon: 'Cocktail parfait ! Toutes les tentatives réussies !',
     lotteryShake: "Secouez jusqu'à 100 % pour le prochain tirage !",
     sensorReady: 'Secouez verticalement. Les mouvements horizontaux sont ignorés.',
     sensorUnavailable: 'Capteur indisponible : utilisez le clavier ou la souris pour tester.',

@@ -24,7 +24,7 @@ const state = {
   shakerOffset: 0,
   shakerTilt: 0,
   motionHandler: null,
-  // lottery: null | { attempt, phase: 'rolling'|'result'|'fail'|'won', successCount }
+  // lottery: null | { attempt, phase: 'rolling'|'result'|'fail', successCount }
   lottery: null,
 };
 
@@ -73,7 +73,7 @@ function render() {
   }
 
   const roundedProgress = Math.round(state.progress);
-  const showLotteryOverlay = ['rolling', 'result', 'fail', 'won'].includes(state.lottery?.phase);
+  const showLotteryOverlay = ['rolling', 'result', 'fail'].includes(state.lottery?.phase);
   const permissionLabel = state.permissionState === 'requesting'
     ? STRINGS.game.permissionRequesting
     : state.sensorActive
@@ -168,13 +168,6 @@ function renderLotteryOverlay() {
       <span>${STRINGS.lottery.failTitle}</span>
     `;
   }
-  if (phase === 'won') {
-    return `
-      <span>${STRINGS.lottery.wonIcon}</span>
-      <span>${STRINGS.lottery.wonTitle}</span>
-      <small>${STRINGS.lottery.wonSubtitle}</small>
-    `;
-  }
   return '';
 }
 
@@ -188,8 +181,6 @@ function renderRescueMeter() {
     let modifier = 'pending';
 
     if (attempt <= successCount) {
-      modifier = 'saved';
-    } else if (phase === 'won') {
       modifier = 'saved';
     } else if (phase === 'fail' && attempt === currentAttempt) {
       modifier = 'lost';
@@ -230,30 +221,23 @@ function triggerLottery() {
 function doLotteryRoll() {
   if (state.screen !== 'game' || !state.lottery) return;
   const { attempt, successCount } = state.lottery;
-  const odds = 7 - attempt; // attempt 1→1/6, 2→1/5, 3→1/4, 4→1/3, 5→1/2
-  const lost = Math.floor(Math.random() * odds) === 0;
+  // attempt 1→1/5, 2→1/4, 3→1/3, 4→1/2, 5→1/1 (mort certaine)
+  const lost = attempt >= MAX_SAVES || Math.floor(Math.random() * (6 - attempt)) === 0;
 
   if (!lost) {
     const newCount = successCount + 1;
-    if (attempt >= MAX_SAVES) {
-      state.lottery = { attempt, phase: 'won', successCount: newCount };
-      state.status = STRINGS.status.lotteryWon;
-      fx.playVictory();
+    state.lottery = { attempt, phase: 'result', successCount: newCount };
+    state.status = '';
+    fx.playSuccess();
+    render();
+    setTimeout(() => {
+      if (state.screen !== 'game' || !state.lottery) return;
+      state.lottery = { attempt: attempt + 1, phase: 'shake', successCount: newCount };
+      state.won = false;
+      state.progress = 0;
+      state.status = STRINGS.status.lotteryShake;
       render();
-    } else {
-      state.lottery = { attempt, phase: 'result', successCount: newCount };
-      state.status = '';
-      fx.playSuccess();
-      render();
-      setTimeout(() => {
-        if (state.screen !== 'game' || !state.lottery) return;
-        state.lottery = { attempt: attempt + 1, phase: 'shake', successCount: newCount };
-        state.won = false;
-        state.progress = 0;
-        state.status = STRINGS.status.lotteryShake;
-        render();
-      }, 1500);
-    }
+    }, 1500);
   } else {
     state.lottery = { attempt, phase: 'fail', successCount };
     state.status = '';

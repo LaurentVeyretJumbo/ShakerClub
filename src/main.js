@@ -1,3 +1,5 @@
+import { STRINGS } from './strings.js';
+
 const SHAKE_THRESHOLD = 2.15;
 const MAX_VERTICAL_FORCE = 11;
 const PROGRESS_GAIN = 18;
@@ -12,7 +14,7 @@ const state = {
   permissionState: 'idle',
   sensorSupported: 'DeviceMotionEvent' in window,
   sensorActive: false,
-  status: 'Appuyez sur PLAY pour lancer le club.',
+  status: STRINGS.initialStatus,
   smoothedVertical: 0,
   lastMotionAt: 0,
   lastFrameAt: performance.now(),
@@ -49,7 +51,7 @@ function render() {
         <div class="hero__glow hero__glow--cyan"></div>
         <div class="hero__glow hero__glow--pink"></div>
         <div class="club-card">
-          <p class="eyebrow">mobile cocktail challenge</p>
+          <p class="eyebrow">${STRINGS.home.eyebrow}</p>
           <h1 id="title" class="neon-title">SHAKE<br><span>CLUB</span></h1>
           <div class="neon-shaker" aria-hidden="true">
             <span class="neon-shaker__cap"></span>
@@ -57,8 +59,8 @@ function render() {
             <span class="neon-shaker__spark neon-shaker__spark--one"></span>
             <span class="neon-shaker__spark neon-shaker__spark--two"></span>
           </div>
-          <p class="hero__copy">Secouez votre téléphone de haut en bas pour remplir la jauge.</p>
-          <button class="button button--play" type="button" data-action="play">PLAY</button>
+          <p class="hero__copy">${STRINGS.home.heroCopy}</p>
+          <button class="button button--play" type="button" data-action="play">${STRINGS.home.playButton}</button>
         </div>
       </section>
     `;
@@ -68,19 +70,19 @@ function render() {
   const roundedProgress = Math.round(state.progress);
   const showLotteryOverlay = ['rolling', 'result', 'fail', 'won'].includes(state.lottery?.phase);
   const permissionLabel = state.permissionState === 'requesting'
-    ? 'Autorisation…'
+    ? STRINGS.game.permissionRequesting
     : state.sensorActive
-      ? 'Capteurs actifs'
-      : 'Activer les mouvements';
+      ? STRINGS.game.permissionActive
+      : STRINGS.game.permissionIdle;
 
   app.innerHTML = `
     <section class="game" aria-labelledby="game-title">
       <div class="game__header">
-        <p class="eyebrow">shake vertical only</p>
-        <h2 id="game-title">Préparez le cocktail</h2>
+        <p class="eyebrow">${STRINGS.game.eyebrow}</p>
+        <h2 id="game-title">${STRINGS.game.title}</h2>
       </div>
 
-      <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${roundedProgress}" aria-label="Progression du shake">
+      <div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${roundedProgress}" aria-label="${STRINGS.game.progressAriaLabel}">
         <span class="meter__fill" style="width: ${state.progress}%"></span>
       </div>
       <strong class="percent">${roundedProgress}%</strong>
@@ -104,10 +106,10 @@ function render() {
 
       <div class="actions">
         <button class="button" type="button" data-action="permission" ${state.sensorActive || !state.sensorSupported ? 'disabled' : ''}>${permissionLabel}</button>
-        <button class="button button--ghost" type="button" data-action="quit">Quitter</button>
+        <button class="button button--ghost" type="button" data-action="quit">${STRINGS.game.quitButton}</button>
       </div>
 
-      <p class="hint">Fallback desktop : appuyez sur <kbd>Espace</kbd>/<kbd>↑</kbd>, cliquez, ou glissez verticalement dans la fenêtre.</p>
+      <p class="hint">${STRINGS.game.hint}</p>
     </section>
   `;
 }
@@ -117,9 +119,9 @@ function renderLotteryOverlay() {
   const { attempt, phase, successCount } = state.lottery;
   if (phase === 'rolling') {
     return `
-      <span class="dice-spin">🎲</span>
-      <span>Tentative ${attempt}</span>
-      <small>Perte: 1 chance sur ${7 - attempt}</small>
+      <span class="dice-spin">${STRINGS.lottery.rollingIcon}</span>
+      <span>${STRINGS.lottery.rollingTitle(attempt)}</span>
+      <small>${STRINGS.lottery.rollingOdds(7 - attempt)}</small>
       <div class="lottery-countdown" aria-hidden="true">
         <span>3</span><span>2</span><span>1</span>
       </div>
@@ -128,26 +130,26 @@ function renderLotteryOverlay() {
   }
   if (phase === 'result') {
     return `
-      <span>✅</span>
-      <span>Réussi !</span>
-      <small>Tentative ${attempt} passée</small>
+      <span>${STRINGS.lottery.resultIcon}</span>
+      <span>${STRINGS.lottery.resultTitle}</span>
+      <small>${STRINGS.lottery.resultSubtitle(attempt)}</small>
     `;
   }
   if (phase === 'fail') {
     const tries = successCount > 0
-      ? `${successCount} tentative${successCount > 1 ? 's' : ''} réussie${successCount > 1 ? 's' : ''}`
-      : 'Première tentative échouée';
+      ? STRINGS.lottery.failSuccesses(successCount)
+      : STRINGS.lottery.failFirstAttempt;
     return `
-      <span>😵</span>
-      <span>Cocktail raté !</span>
+      <span>${STRINGS.lottery.failIcon}</span>
+      <span>${STRINGS.lottery.failTitle}</span>
       <small>${tries}</small>
     `;
   }
   if (phase === 'won') {
     return `
-      <span>🏆</span>
-      <span>Cocktail parfait !</span>
-      <small>Toutes les tentatives réussies !</small>
+      <span>${STRINGS.lottery.wonIcon}</span>
+      <span>${STRINGS.lottery.wonTitle}</span>
+      <small>${STRINGS.lottery.wonSubtitle}</small>
     `;
   }
   return '';
@@ -177,7 +179,7 @@ function renderRescueMeter() {
     return `<div class="rescue-step rescue-step--${modifier}"><span class="rescue-step__index">${attempt}</span></div>`;
   }).join('');
 
-  return `<div class="rescue-meter" aria-label="Etat des sauvetages"><div class="rescue-meter__grid">${items}</div></div>`;
+  return `<div class="rescue-meter" aria-label="${STRINGS.game.rescueAriaLabel}"><div class="rescue-meter__grid">${items}</div></div>`;
 }
 
 function goHome() {
@@ -195,7 +197,7 @@ function goHome() {
 function triggerLottery() {
   state.won = true;
   state.lottery = { attempt: 1, phase: 'rolling', successCount: 0 };
-  state.status = 'Le sort en décide…';
+  state.status = STRINGS.status.lotteryRolling;
   render();
   setTimeout(doLotteryRoll, 3300);
 }
@@ -210,24 +212,24 @@ function doLotteryRoll() {
     const newCount = successCount + 1;
     if (attempt >= MAX_SAVES) {
       state.lottery = { attempt, phase: 'won', successCount: newCount };
-      state.status = 'Cocktail parfait ! Toutes les tentatives réussies !';
+      state.status = STRINGS.status.lotteryWon;
       render();
     } else {
       state.lottery = { attempt, phase: 'result', successCount: newCount };
-      state.status = `Tentative ${attempt} réussie ! Secouez à nouveau pour continuer…`;
+      state.status = STRINGS.status.lotteryResult(attempt);
       render();
       setTimeout(() => {
         if (state.screen !== 'game' || !state.lottery) return;
         state.lottery = { attempt: attempt + 1, phase: 'shake', successCount: newCount };
         state.won = false;
         state.progress = 0;
-        state.status = 'Secouez jusqu\'à 100 % pour le prochain tirage !';
+        state.status = STRINGS.status.lotteryShake;
         render();
       }, 1500);
     }
   } else {
     state.lottery = { attempt, phase: 'fail', successCount };
-    state.status = `Raté à la tentative ${attempt}. Cocktail manqué !`;
+    state.status = STRINGS.status.lotteryFail(attempt);
     render();
   }
 }
@@ -248,13 +250,13 @@ function resetGame() {
   state.lastMotionAt = 0;
   state.fallbackImpulse = 0;
   state.status = state.sensorSupported
-    ? 'Secouez verticalement. Les mouvements horizontaux sont ignorés.'
-    : 'Capteur indisponible : utilisez le clavier ou la souris pour tester.';
+    ? STRINGS.status.sensorReady
+    : STRINGS.status.sensorUnavailable;
 }
 
 async function ensureMotionAccess() {
   if (!state.sensorSupported) {
-    state.status = 'DeviceMotionEvent indisponible : fallback desktop activé.';
+    state.status = STRINGS.status.sensorNotSupported;
     render();
     return;
   }
@@ -265,20 +267,20 @@ async function ensureMotionAccess() {
 
   if (isIosPermissionRequired()) {
     state.permissionState = 'requesting';
-    state.status = 'iOS demande une autorisation pour accéder aux mouvements.';
+    state.status = STRINGS.status.iosPermissionPending;
     render();
 
     try {
       const answer = await DeviceMotionEvent.requestPermission();
       if (answer !== 'granted') {
         state.permissionState = 'denied';
-        state.status = 'Autorisation refusée : utilisez le fallback clavier/souris.';
+        state.status = STRINGS.status.iosPermissionDenied;
         render();
         return;
       }
     } catch (error) {
       state.permissionState = 'denied';
-      state.status = 'Autorisation impossible : utilisez le fallback clavier/souris.';
+      state.status = STRINGS.status.iosPermissionError;
       render();
       return;
     }
@@ -304,21 +306,21 @@ function startMotionListener() {
     state.lastMotionAt = performance.now();
 
     if (state.smoothedVertical > SHAKE_THRESHOLD) {
-      state.status = 'Shake vertical détecté ! Continuez.';
+      state.status = STRINGS.status.sensorDetected;
     }
   };
 
   window.addEventListener('devicemotion', state.motionHandler, { passive: true });
   state.sensorActive = true;
   state.permissionState = 'granted';
-  state.status = 'Capteurs actifs : secouez le téléphone de haut en bas.';
+  state.status = STRINGS.status.sensorActive;
   render();
 }
 
 function addFallbackShake(amount = 7) {
   if (state.screen !== 'game' || state.won) return;
   state.fallbackImpulse = Math.min(MAX_VERTICAL_FORCE, state.fallbackImpulse + amount);
-  state.status = 'Fallback desktop : shake vertical simulé.';
+  state.status = STRINGS.status.fallbackDesktop;
 }
 
 function update(timestamp) {
@@ -347,7 +349,7 @@ function update(timestamp) {
         const { attempt, successCount } = state.lottery;
         state.won = true;
         state.lottery = { attempt, phase: 'rolling', successCount };
-        state.status = 'Le sort en décide…';
+        state.status = STRINGS.status.lotteryRolling;
         render();
         setTimeout(doLotteryRoll, 3300);
       } else {

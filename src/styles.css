@@ -417,6 +417,41 @@ button {
   transform: translateX(-37px) rotate(10deg);
 }
 
+/* ── Indicateur directionnel (découverte du mouvement vertical) ── */
+.shaker-hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.shaker-hint__arrow {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-right: 2.5px solid #00f7ff;
+  border-top: 2.5px solid #00f7ff;
+  filter: drop-shadow(0 0 5px #00f7ff);
+}
+
+.shaker-hint__arrow--up {
+  animation: hint-up 1.4s ease-in-out infinite;
+}
+
+.shaker-hint__arrow--down {
+  animation: hint-down 1.4s ease-in-out infinite;
+  animation-delay: 0.7s;
+}
+
 .victory {
   position: absolute;
   display: grid;
@@ -523,6 +558,16 @@ button {
 @keyframes timer-drain {
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }
+}
+
+@keyframes hint-up {
+  0%, 100% { transform: translateY(0) rotate(-45deg); opacity: 0.2; }
+  50%       { transform: translateY(-7px) rotate(-45deg); opacity: 0.85; }
+}
+
+@keyframes hint-down {
+  0%, 100% { transform: translateY(0) rotate(135deg); opacity: 0.2; }
+  50%       { transform: translateY(7px) rotate(135deg); opacity: 0.85; }
 }
 
 .status {

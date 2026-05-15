@@ -33,7 +33,7 @@ const MAX_SAVES = 5;
 const app = document.querySelector('#app');
 
 // References to the elements updated every frame — populated by render(), nulled on home screen.
-const dom = { meter: null, meterFill: null, percent: null, shaker: null, liquid: null, status: null };
+const dom = { meter: null, meterFill: null, percent: null, shaker: null, shakerHint: null, liquid: null, status: null };
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -50,7 +50,7 @@ function render() {
   app.className = `app app--${state.screen}`;
 
   if (state.screen === 'home') {
-    dom.meter = dom.meterFill = dom.percent = dom.shaker = dom.liquid = dom.status = null;
+    dom.meter = dom.meterFill = dom.percent = dom.shaker = dom.shakerHint = dom.liquid = dom.status = null;
     app.innerHTML = `
       <section class="hero" aria-labelledby="title">
         <div class="hero__glow hero__glow--cyan"></div>
@@ -96,6 +96,10 @@ function render() {
 
       <div class="stage">
         <div class="liquid" style="height: ${clamp(18 + state.progress * 0.62, 18, 82)}%"></div>
+        <div class="shaker-hint" aria-hidden="true">
+          <span class="shaker-hint__arrow shaker-hint__arrow--up"></span>
+          <span class="shaker-hint__arrow shaker-hint__arrow--down"></span>
+        </div>
         <div class="shaker" style="--shake-y: ${state.shakerOffset}px; --shake-tilt: ${state.shakerTilt}deg" aria-hidden="true">
           <span class="shaker__lid"></span>
           <span class="shaker__neck"></span>
@@ -120,9 +124,10 @@ function render() {
   dom.meter     = app.querySelector('.meter');
   dom.meterFill = app.querySelector('.meter__fill');
   dom.percent   = app.querySelector('.percent');
-  dom.shaker    = app.querySelector('.shaker');
-  dom.liquid    = app.querySelector('.liquid');
-  dom.status    = app.querySelector('.status');
+  dom.shaker     = app.querySelector('.shaker');
+  dom.shakerHint = app.querySelector('.shaker-hint');
+  dom.liquid     = app.querySelector('.liquid');
+  dom.status     = app.querySelector('.status');
 }
 
 function renderFrame() {
@@ -134,6 +139,7 @@ function renderFrame() {
   dom.shaker.style.setProperty('--shake-y', `${state.shakerOffset}px`);
   dom.shaker.style.setProperty('--shake-tilt', `${state.shakerTilt}deg`);
   dom.liquid.style.height = `${clamp(18 + state.progress * 0.62, 18, 82)}%`;
+  dom.shakerHint.style.opacity = Math.max(0, 1 - state.progress / 40);
   dom.status.textContent = state.status;
 }
 
@@ -330,7 +336,7 @@ function startMotionListener() {
 
     if (state.smoothedVertical > SHAKE_THRESHOLD) {
       state.status = STRINGS.status.sensorDetected;
-      fx.playShakeTick();
+      fx.playShakeTick(state.smoothedVertical);
     }
   };
 

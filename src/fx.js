@@ -54,8 +54,9 @@ function noiseBurst(dur, vol = 0.25, filterFreq = 600, delay = 0) {
 
 let _lastShakeAt = 0;
 
-/** Tick court pendant le shake actif — throttlé à ~6/s max. */
-export function playShakeTick() {
+/** Tick court pendant le shake actif — throttlé à ~6/s max.
+ *  @param {number} force  valeur lissée (0–11) — vibre seulement si force > 5 */
+export function playShakeTick(force = 0) {
   const now = performance.now();
   if (now - _lastShakeAt < 160) return;
   _lastShakeAt = now;
@@ -71,7 +72,8 @@ export function playShakeTick() {
   g.connect(c.destination);
   osc.start();
   osc.stop(c.currentTime + 0.08);
-  navigator.vibrate?.(20);
+  // Ne vibre que pour les secousses verticales franches (force > 5 sur 11 max)
+  if (force > 5) navigator.vibrate?.(10 + Math.round((force - 5) / 6 * 20));
 }
 
 /** Sweep ascendant + impact quand la jauge atteint 100 %. */

@@ -8,8 +8,8 @@ export const STRINGS = {
 
   // Écran d'accueil
   home: {
-    eyebrow: 'mobile cocktail challenge',
-    heroCopy: 'Secouez votre téléphone de haut en bas pour remplir la jauge.',
+    eyebrow: 'Cocktail challenge',
+    heroCopy: 'Secouez votre téléphone pour shaker le cocktail parfait !',
     playButton: 'PLAY',
   },
 
@@ -30,14 +30,10 @@ export const STRINGS = {
   lottery: {
     rollingIcon: '🎲',
     rollingTitle: (attempt) => `Tentative ${attempt}`,
-    rollingOdds: (odds) => `Perte: 1 chance sur ${odds}`,
     resultIcon: '✅',
     resultTitle: 'Réussi !',
-    resultSubtitle: (attempt) => `Tentative ${attempt} passée`,
     failIcon: '😵',
     failTitle: 'Cocktail raté !',
-    failFirstAttempt: 'Première tentative échouée',
-    failSuccesses: (count) => `${count} tentative${count > 1 ? 's' : ''} réussie${count > 1 ? 's' : ''}`,
     wonIcon: '🏆',
     wonTitle: 'Cocktail parfait !',
     wonSubtitle: 'Toutes les tentatives réussies !',
@@ -45,11 +41,9 @@ export const STRINGS = {
 
   // Messages de statut (barre en bas de l'écran de jeu)
   status: {
-    lotteryRolling: 'Le sort en décide…',
+    lotteryRolling: 'Vérification du Cocktail…',
     lotteryWon: 'Cocktail parfait ! Toutes les tentatives réussies !',
-    lotteryResult: (attempt) => `Tentative ${attempt} réussie ! Secouez à nouveau pour continuer…`,
     lotteryShake: "Secouez jusqu'à 100 % pour le prochain tirage !",
-    lotteryFail: (attempt) => `Raté à la tentative ${attempt}. Cocktail manqué !`,
     sensorReady: 'Secouez verticalement. Les mouvements horizontaux sont ignorés.',
     sensorUnavailable: 'Capteur indisponible : utilisez le clavier ou la souris pour tester.',
     sensorNotSupported: 'DeviceMotionEvent indisponible : fallback desktop activé.',

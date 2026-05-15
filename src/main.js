@@ -116,12 +116,11 @@ function render() {
 
 function renderLotteryOverlay() {
   if (!state.lottery) return '';
-  const { attempt, phase, successCount } = state.lottery;
+  const { attempt, phase } = state.lottery;
   if (phase === 'rolling') {
     return `
       <span class="dice-spin">${STRINGS.lottery.rollingIcon}</span>
       <span>${STRINGS.lottery.rollingTitle(attempt)}</span>
-      <small>${STRINGS.lottery.rollingOdds(7 - attempt)}</small>
       <div class="lottery-countdown" aria-hidden="true">
         <span>3</span><span>2</span><span>1</span>
       </div>
@@ -132,17 +131,12 @@ function renderLotteryOverlay() {
     return `
       <span>${STRINGS.lottery.resultIcon}</span>
       <span>${STRINGS.lottery.resultTitle}</span>
-      <small>${STRINGS.lottery.resultSubtitle(attempt)}</small>
     `;
   }
   if (phase === 'fail') {
-    const tries = successCount > 0
-      ? STRINGS.lottery.failSuccesses(successCount)
-      : STRINGS.lottery.failFirstAttempt;
     return `
       <span>${STRINGS.lottery.failIcon}</span>
       <span>${STRINGS.lottery.failTitle}</span>
-      <small>${tries}</small>
     `;
   }
   if (phase === 'won') {
@@ -216,7 +210,7 @@ function doLotteryRoll() {
       render();
     } else {
       state.lottery = { attempt, phase: 'result', successCount: newCount };
-      state.status = STRINGS.status.lotteryResult(attempt);
+      state.status = '';
       render();
       setTimeout(() => {
         if (state.screen !== 'game' || !state.lottery) return;
@@ -229,7 +223,7 @@ function doLotteryRoll() {
     }
   } else {
     state.lottery = { attempt, phase: 'fail', successCount };
-    state.status = STRINGS.status.lotteryFail(attempt);
+    state.status = '';
     render();
   }
 }
